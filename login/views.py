@@ -77,8 +77,8 @@ class CreatePortfolioView(APIView):
     permission_classes = [IsAuthenticated]
     def post(self, requests):
         try:
-            if(len(Portfolio.objects.all())>0):
-                Portfolio.objects.all()[0].delete()
+            # if(len(Portfolio.objects.all())>0):
+            #     Portfolio.objects.all()[0].delete()
             name = requests.data.get("name")
             user = requests.user
             jobrole = requests.data.get("jobrole")
