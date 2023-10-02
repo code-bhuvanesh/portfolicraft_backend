@@ -1,10 +1,6 @@
 from django.db import models
 from django.contrib.auth.models import User
 
-class ProjectImage(models.Model):
-    image = models.ImageField(upload_to="projectimages")
-
-
 
 class Education(models.Model):
     institution = models.CharField(max_length=100)
@@ -16,7 +12,8 @@ class Education(models.Model):
     
 class Project(models.Model):
     projectname = models.CharField(max_length=100)
-    projectimages = models.ManyToManyField(ProjectImage, blank=True)
+    # projectimages = models.ManyToManyField(ProjectImage, blank=True)
+    projectimage = models.ImageField(upload_to="projectimages", blank=True)
     projectdesc = models.CharField(max_length=500)
     projectlinks = models.CharField(max_length=2000)
 

@@ -3,10 +3,11 @@ from rest_framework import status
 from rest_framework.views import APIView, Response
 from django.views.decorators.csrf import csrf_exempt
 from .utils import userLogin
-from .models import Education, Portfolio, Project, ProjectImage
+from .models import Education, Portfolio, Project
 from django.contrib.auth.models import User
 from rest_framework_simplejwt.tokens import RefreshToken, AccessToken
 from rest_framework.permissions import IsAuthenticated
+
 
 import json
 
@@ -77,7 +78,6 @@ class CreatePortfolioView(APIView):
     permission_classes = [IsAuthenticated]
     def post(self, requests):
         # try:
-            # if(len(Portfolio.objects.all())>0):
             # if(Portfolio.objects.get(user = requests.user) != None):
             #     Portfolio.objects.get(user = requests.user).delete()
             name = requests.data.get("name")
@@ -87,100 +87,126 @@ class CreatePortfolioView(APIView):
             skills = ""
             for skill in requests.data.get("skills"):
                 skills += skill + ","
-                print("skill : " + skills)
             # social_links = "" 
             # for links in requests.data.get("socialmedia"):
             #     social_links += links + ","
 
-            newPorfolio = Portfolio(
-                username = user.username,
-                user = user,
-                name = name,
-                jobrole = jobrole,
-                description = description,
-                skills = skills,
-                # socialmedia = social_links,
-            )
+            if(Portfolio.objects.get(user = requests.user) != None):
+                print("using old")
+                newPorfolio = Portfolio.objects.get(user = requests.user)
+                newPorfolio.username = user.username
+                newPorfolio.user = user
+                newPorfolio.name = name
+                newPorfolio.jobrole = jobrole
+                newPorfolio.description = description
+                newPorfolio.skills = skills
+            else:
+                newPorfolio = Portfolio(
+                    username = user.username,
+                    user = user,
+                    name = name,
+                    jobrole = jobrole,
+                    description = description,
+                    skills = skills,
+                )
             newPorfolio.save()
             print("pk : " + str(newPorfolio.pk))
-            # for education in requests.data.get("educations"):
-            #     print(education)
-            #     inst = education["institution"]
-            #     degree = education["degree"]
-            #     try:
-            #         sy = education["startyear"]
-            #         ey = education["endyear"]
-            #     except:
-            #         pass
-            #     edu = Education(
-            #         institution = inst,
-            #         degree = degree,
-            #         startYear = sy,
-            #         endYear = ey
-            #     )
-            #     edu.save()
-            #     newPorfolio.educations.add(edu)
-
-            # for project in requests.data.get("projects"):
-            #     name = project["projectname"]
-            #     # images = project["projectimages"]
-            #     desc = project["projectdesc"]
-            #     links = "" 
-            #     for link in project["projectlinks"]:
-            #         links += link + ","
-            #     proj = Project(
-            #         projectname = name,
-            #         # projectimages = images,
-            #         projectdesc = desc
-            #     )
-            #     proj.save()
-            #     newPorfolio.projects.add(proj)
 
             return Response("created", status=status.HTTP_201_CREATED)
         # except Exception as exc:
             print(exc)
 
             return Response("some error occured", status=status.HTTP_404_NOT_FOUND)
-        
-class AddProjects(APIView):
+    
+class AddEducations(APIView):
     permission_classes = [IsAuthenticated]
     def post(self, request):
         try:
-            projects = request.data.get("projects")
             user = request.user
             portfolio = Portfolio.objects.get(user=user)
-            for project in projects:
-                name = project["projectname"]
-                # images = project["projectimages"]
-                desc = project["projectdesc"]
-                links = "" 
-                for link in project["projectlinks"]:
-                    links += link + ","
-                proj = Project(
-                    projectname = name,
-                    # projectimages = images,
-                    projectdesc = desc
+            for education in request.data.get("educations"):
+                print(education)
+                inst = education["institution"]
+                degree = education["degree"]
+                try:
+                    sy = education["startyear"]
+                    ey = education["endyear"]
+                except:
+                    pass
+                edu = Education(
+                    institution = inst,
+                    degree = degree,
+                    startYear = sy,
+                    endYear = ey
                 )
-                proj.save()
-                portfolio.projects.add(proj)
-            return Response("project added successfully" ,status=status.HTTP_201_CREATED)
+                edu.save()
+                portfolio.educations.add(edu)
+            return Response("educations added successfully" ,status=status.HTTP_201_CREATED)
         except Exception as e:
+            print(e)
+            return Response("failed to add educations" ,status=status.HTTP_201_CREATED)
+class AddProjects(APIView):
+    permission_classes = [IsAuthenticated]
+    def post(self, request):
+        # try:
+            print(request.data)
+            project = request.data
+            user = request.user
+            portfolio = Portfolio.objects.get(user=user)
+            #save image got form the client
+            name = project["projectname"]
+            img = project["projectimages"]
+            desc = project["projectdesc"]
+            links = project["projectlinks"]
+            proj = Project(
+                projectname = name,
+                projectdesc = desc,
+                projectlinks = links,
+                projectimage = img
+            )
+            proj.save()
+            portfolio.projects.add(proj)
+            portfolio.save()
+            return Response("project added successfully" ,status=status.HTTP_201_CREATED)
+        # except Exception as e:
             print(e)
             return Response("failed to add project" ,status=status.HTTP_201_CREATED)
 
+class AddSocialLinks(APIView):
+    permission_classes = [IsAuthenticated]
+    def post(self, request):
+        try:
+            print(request.data.get("socialmedia"))
+            social_links = "" 
+            for links in request.data.get("socialmedia"):
+                social_links += links + ","
+            
+            portfolio = Portfolio.objects.get(user = request.user)
+            portfolio.socialmedia = social_links
+            portfolio.save()
 
- 
-        
+            return Response("social links added successfully" ,status=status.HTTP_201_CREATED)
+        except:
+            return Response("failed to add links" ,status=status.HTTP_201_CREATED)
+
+
 class PortfolioView(APIView):
+    # permission_classes = [IsAuthenticated]
     def get(self, requests):
-        print(requests.query_params.get("username"))
-        username = requests.query_params.get("username")
-        user_portfolio = Portfolio.objects.get(username = username)
+        if(requests.query_params.get("isowner") == "true"):
+            user = requests.user
+            if(user == None or user.is_anonymous):
+                return Response("Unauthorized acess", status=status.HTTP_401_UNAUTHORIZED)
+            user_portfolio = Portfolio.objects.get(user = user.id)
+        else:
+            print(requests.query_params.get("username"))
+            username = requests.query_params.get("username")
+            user_portfolio = Portfolio.objects.get(username = username)
+
         if user_portfolio:
             return Response(portfolioToJson(user_portfolio), status=status.HTTP_200_OK)
         else:
             return Response("no user found", status=status.HTTP_404_NOT_FOUND)
-        
 
 
 
@@ -208,32 +234,32 @@ def educationToJSon(edu):
     return out
 
 def projectToJSon(project):
+    
     out = []
-    for pro in project.all():
-        images = []
-        for image in pro.projectimages.all():
-            images.append(image.image)
+    for pro in project:
 
         out.append({
             "projectname" : pro.projectname,
-            "projectimages" : images,
+            "projectimages" : "http://127.0.0.1:8000" + pro.projectimage.url,
             "projectdesc" : pro.projectdesc,
-            "projectlinks" : stringToList(pro.projectlinks),
+            "projectlinks" : str(pro.projectlinks),
         })
 
     return out
         
 
-def portfolioToJson(portfolio: Portfolio):
-
+def portfolioToJson(portfolio: Portfolio, ):
+    projectToJSon(portfolio.projects.all())
     return {
-        "username" : portfolio.username,
+        "username" : portfolio.user.username,
         "name"  : portfolio.name,
+        "email" : portfolio.user.email,
         "jobrole" : portfolio.jobrole,
         "description" : portfolio.description,
         "socialmedia" : stringToList(portfolio.socialmedia),
         "skills"  : stringToList(portfolio.skills),
         "educations" : educationToJSon(portfolio.educations.all()),
+        # "projects"  : [],
         "projects"  : projectToJSon(portfolio.projects.all()),
     }
 
