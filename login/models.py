@@ -8,8 +8,9 @@ class ProjectImage(models.Model):
 
 class Education(models.Model):
     institution = models.CharField(max_length=100)
-    startYear = models.IntegerField()
-    endYear = models.IntegerField()
+    degree = models.CharField(max_length=100)
+    startYear = models.IntegerField(blank=True)
+    endYear = models.IntegerField(blank=True)
 
 
     
