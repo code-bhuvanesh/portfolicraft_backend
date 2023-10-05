@@ -66,7 +66,8 @@ REST_FRAMEWORK = {
 }
 
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(hours=1),
+    'ACCESS_TOKEN_LIFETIME': timedelta(days=15),  # Set token expiration time
+    'SLIDING_TOKEN_REFRESH_LIFETIME': timedelta(weeks=10),  # Set refresh token expiration time
 }
 
 CORS_ORIGIN_ALLOW_ALL = True

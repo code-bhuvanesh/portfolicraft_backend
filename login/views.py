@@ -17,8 +17,6 @@ class LoginView(APIView):
     def post(self, request):    
         email = request.data.get("email")
         password = request.data.get("password")
-        print(email)
-        print(password)
         user = userLogin(email, password)
         if user != None:
             refreshtoken = RefreshToken.for_user(user)
@@ -121,18 +119,19 @@ class CreatePortfolioView(APIView):
 class AddEducations(APIView):
     permission_classes = [IsAuthenticated]
     def post(self, request):
-        try:
+        # try:
             user = request.user
             portfolio = Portfolio.objects.get(user=user)
             for education in request.data.get("educations"):
                 print(education)
                 inst = education["institution"]
                 degree = education["degree"]
-                try:
-                    sy = education["startyear"]
-                    ey = education["endyear"]
-                except:
-                    pass
+                sy = education["startyear"]
+                ey = education["endyear"]
+                if(sy == ""):
+                    sy = 0
+                if(ey == ""):
+                    ey = 0
                 edu = Education(
                     institution = inst,
                     degree = degree,
@@ -142,16 +141,17 @@ class AddEducations(APIView):
                 edu.save()
                 portfolio.educations.add(edu)
             return Response("educations added successfully" ,status=status.HTTP_201_CREATED)
-        except Exception as e:
+        # except Exception as e:
             print(e)
             return Response("failed to add educations" ,status=status.HTTP_201_CREATED)
 class AddProjects(APIView):
     permission_classes = [IsAuthenticated]
     def post(self, request):
         # try:
-            print(request.data)
             project = request.data
+            print("request from the user")
             user = request.user
+            print(project)
             portfolio = Portfolio.objects.get(user=user)
             #save image got form the client
             name = project["projectname"]
@@ -193,20 +193,23 @@ class AddSocialLinks(APIView):
 class PortfolioView(APIView):
     # permission_classes = [IsAuthenticated]
     def get(self, requests):
-        if(requests.query_params.get("isowner") == "true"):
-            user = requests.user
-            if(user == None or user.is_anonymous):
-                return Response("Unauthorized acess", status=status.HTTP_401_UNAUTHORIZED)
-            user_portfolio = Portfolio.objects.get(user = user.id)
-        else:
-            print(requests.query_params.get("username"))
-            username = requests.query_params.get("username")
-            user_portfolio = Portfolio.objects.get(username = username)
+        try:
+            if(requests.query_params.get("isowner") == "true"):
+                user = requests.user
+                if(user == None or user.is_anonymous):
+                    return Response("Unauthorized acess", status=status.HTTP_401_UNAUTHORIZED)
+                user_portfolio = Portfolio.objects.get(user = user.id)
+            else:
+                print(requests.query_params.get("username"))
+                username = requests.query_params.get("username")
+                user_portfolio = Portfolio.objects.get(username = username)
 
-        if user_portfolio:
-            return Response(portfolioToJson(user_portfolio), status=status.HTTP_200_OK)
-        else:
-            return Response("no user found", status=status.HTTP_404_NOT_FOUND)
+            if user_portfolio:
+                return Response(portfolioToJson(user_portfolio), status=status.HTTP_200_OK)
+            else:
+                return Response("no user found", status=status.HTTP_404_NOT_FOUND)
+        except:
+            return Response(portfolioToJsonBasic(requests.user), status=status.HTTP_200_OK)
 
 
 
@@ -233,10 +236,9 @@ def educationToJSon(edu):
        
     return out
 
-def projectToJSon(project):
-    
+def projectToJSon(projects):
     out = []
-    for pro in project:
+    for pro in projects:
 
         out.append({
             "projectname" : pro.projectname,
@@ -262,6 +264,13 @@ def portfolioToJson(portfolio: Portfolio, ):
         # "projects"  : [],
         "projects"  : projectToJSon(portfolio.projects.all()),
     }
+
+def portfolioToJsonBasic(user: User):
+     return {
+        "username" : user.username,
+        "email" : user.email
+    }
+
 
 
 
